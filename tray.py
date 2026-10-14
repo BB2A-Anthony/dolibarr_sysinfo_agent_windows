@@ -1,14 +1,21 @@
 import json
 import logging
 import os
+import sys
 import threading
 
 from agent.crypto import decrypt
 from agent.sender import enroll_soc, get_api_key, load_config, send_report, test_connection
 
-CONFIG_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "config.json"
-)
+
+def _base_dir():
+    """Dossier de l'exe compile (PyInstaller onefile) ou du script."""
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+CONFIG_PATH = os.path.join(_base_dir(), "config.json")
 
 DEFAULT_INITIAL_DELAY = 30
 DEFAULT_POLL_INTERVAL = 14400
@@ -165,11 +172,41 @@ def open_settings(controller, on_saved=None):
     root.mainloop()
 
 
+def enroll_cli(config_path, api_url, code):
+    """Enrolement en ligne de commande (sans interface), utilise par le setup.
+
+    Retourne 0 si succes, 2 si echec d'enrolement, 3 si arguments manquants.
+    """
+    logging.basicConfig(level=logging.INFO)
+    if not api_url or not code:
+        print("URL et code d'enrolement requis.")
+        return 3
+    controller = AgentController(config_path)
+    controller.config["api_url"] = api_url
+    ok, message, _ = enroll_soc(controller.config, code, controller.config_path)
+    if not ok:
+        print(message)
+        return 2
+    controller.save(api_url)
+    print(message)
+    return 0
+
+
+def _arg_value(name):
+    try:
+        return sys.argv[sys.argv.index(name) + 1]
+    except (ValueError, IndexError):
+        return ""
+
+
 def main():
     import pystray
     from PIL import Image, ImageDraw
 
     logging.basicConfig(level=logging.INFO)
+
+    if "--enroll-url" in sys.argv or "--enroll-code" in sys.argv:
+        sys.exit(enroll_cli(CONFIG_PATH, _arg_value("--enroll-url"), _arg_value("--enroll-code")))
 
     controller = AgentController()
     controller.start()
@@ -193,9 +230,12 @@ def main():
         log = logging.getLogger("tray")
         (log.info if ok else log.error)("Test connexion: %s", message)
 
+    done = threading.Event()
+
     def on_quit(icon, item):
         controller.stop()
         icon.stop()
+        done.set()
 
     menu = pystray.Menu(
         pystray.MenuItem("Envoyer maintenant", on_send_now),
@@ -211,7 +251,13 @@ def main():
         title="Dolibarr Windows Agent",
         menu=menu,
     )
-    icon.run()
+    icon.run_detached()
+    # Premier lancement : aucune cle API stockee -> ouvrir automatiquement
+    # la fenetre d'installation (URL + code d'enrolement Dolibarr).
+    if not get_api_key(controller.config):
+        open_settings(controller)
+    # Maintient le process vivant tant que l'icone n'est pas quittee.
+    done.wait()
 
 
 if __name__ == "__main__":

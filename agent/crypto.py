@@ -15,71 +15,82 @@ import os
 logger = logging.getLogger("agent.crypto")
 
 _PREFIX = "dpapi:"
+_PREFIX_MACHINE = "dpapim:"
+
+# CRYPTPROTECT_LOCAL_MACHINE : le blob est dechiffrable par n'importe
+# quel compte de la machine (necessaire car l'icone tourne en session
+# utilisateur alors que le service tourne sous SYSTEM).
+_CRYPTPROTECT_LOCAL_MACHINE = 0x04
 
 
-def encrypt(value):
-    """Encrypt a secret with DPAPI. Returns 'dpapi:<base64>' or None."""
-    if os.name != "nt":
+def _dpapi(value, protect, machine=False):
+    """CryptProtectData / CryptUnprotectData via ctypes."""
+    import ctypes
+    from ctypes import wintypes
+
+    class DATA_BLOB(ctypes.Structure):
+        _fields_ = [
+            ("cbData", wintypes.DWORD),
+            ("pbData", ctypes.POINTER(ctypes.c_char)),
+        ]
+
+    def _blob(data):
+        buf = ctypes.create_string_buffer(data, len(data))
+        return DATA_BLOB(len(data), ctypes.cast(buf, ctypes.POINTER(ctypes.c_char)))
+
+    flags = _CRYPTPROTECT_LOCAL_MACHINE if machine else 0
+    in_blob = _blob(value)
+    out_blob = DATA_BLOB()
+    if protect:
+        ok = ctypes.windll.crypt32.CryptProtectData(
+            ctypes.byref(in_blob), None, None, None, None, flags, ctypes.byref(out_blob)
+        )
+    else:
+        ok = ctypes.windll.crypt32.CryptUnprotectData(
+            ctypes.byref(in_blob), None, None, None, None, flags, ctypes.byref(out_blob)
+        )
+    if not ok:
         return None
     try:
-        import ctypes
-        from ctypes import wintypes
+        return ctypes.string_at(out_blob.pbData, out_blob.cbData)
+    finally:
+        ctypes.windll.kernel32.LocalFree(out_blob.pbData)
 
-        class DATA_BLOB(ctypes.Structure):
-            _fields_ = [
-                ("cbData", wintypes.DWORD),
-                ("pbData", ctypes.POINTER(ctypes.c_char)),
-            ]
 
-        def _blob(data):
-            buf = ctypes.create_string_buffer(data, len(data))
-            return DATA_BLOB(len(data), ctypes.cast(buf, ctypes.POINTER(ctypes.c_char)))
+def encrypt(value, machine=False):
+    """Encrypt a secret with DPAPI. Returns 'dpapi[m]:<base64>' or None.
 
-        in_blob = _blob(value.encode("utf-8"))
-        out_blob = DATA_BLOB()
-        if not ctypes.windll.crypt32.CryptProtectData(
-            ctypes.byref(in_blob), None, None, None, None, 0, ctypes.byref(out_blob)
-        ):
+    machine=True utilise CRYPTPROTECT_LOCAL_MACHINE pour que le service
+    Windows (SYSTEM) puisse dechiffrer une cle enrôlee depuis la session
+    utilisateur, et inversement.
+    """
+    if os.name != "nt":
+        return None
+    prefix = _PREFIX_MACHINE if machine else _PREFIX
+    try:
+        encrypted = _dpapi(value.encode("utf-8"), protect=True, machine=machine)
+        if encrypted is None:
             return None
-        try:
-            encrypted = ctypes.string_at(out_blob.pbData, out_blob.cbData)
-        finally:
-            ctypes.windll.kernel32.LocalFree(out_blob.pbData)
-        return _PREFIX + base64.b64encode(encrypted).decode("ascii")
+        return prefix + base64.b64encode(encrypted).decode("ascii")
     except Exception:
         logger.exception("DPAPI encryption failed")
         return None
 
 
 def decrypt(stored):
-    """Decrypt a 'dpapi:<base64>' value back to plaintext, or None."""
-    if not stored or not stored.startswith(_PREFIX):
+    """Decrypt a 'dpapi[m]:<base64>' value back to plaintext, or None."""
+    if not stored:
+        return None
+    if stored.startswith(_PREFIX_MACHINE):
+        prefix, machine = _PREFIX_MACHINE, True
+    elif stored.startswith(_PREFIX):
+        prefix, machine = _PREFIX, False
+    else:
         return None
     try:
-        import ctypes
-        from ctypes import wintypes
-
-        class DATA_BLOB(ctypes.Structure):
-            _fields_ = [
-                ("cbData", wintypes.DWORD),
-                ("pbData", ctypes.POINTER(ctypes.c_char)),
-            ]
-
-        def _blob(data):
-            buf = ctypes.create_string_buffer(data, len(data))
-            return DATA_BLOB(len(data), ctypes.cast(buf, ctypes.POINTER(ctypes.c_char)))
-
-        encrypted = base64.b64decode(stored[len(_PREFIX):].encode("ascii"))
-        in_blob = _blob(encrypted)
-        out_blob = DATA_BLOB()
-        if not ctypes.windll.crypt32.CryptUnprotectData(
-            ctypes.byref(in_blob), None, None, None, None, 0, ctypes.byref(out_blob)
-        ):
-            return None
-        try:
-            return ctypes.string_at(out_blob.pbData, out_blob.cbData).decode("utf-8")
-        finally:
-            ctypes.windll.kernel32.LocalFree(out_blob.pbData)
+        encrypted = base64.b64decode(stored[len(prefix):].encode("ascii"))
+        value = _dpapi(encrypted, protect=False, machine=machine)
+        return value.decode("utf-8") if value is not None else None
     except Exception:
         logger.exception("DPAPI decryption failed")
         return None

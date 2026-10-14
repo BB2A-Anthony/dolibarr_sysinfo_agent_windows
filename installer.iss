@@ -27,6 +27,12 @@ ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=admin
 UninstallDisplayName={#MyAppName}
 
+[Types]
+Name: "full"; Description: "Installation complete"
+
+[Components]
+Name: "main"; Description: "{#MyAppName}"; Types: full; Flags: fixed
+
 [Files]
 Source: "dist\{#MyAppServiceExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
@@ -36,6 +42,58 @@ Source: "config.example.json"; DestDir: "{app}"; DestName: "config.json"; Flags:
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 ; Autostart tray icon for the current user (systematique)
 Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
+
+[Code]
+var
+  EnrollPage: TInputQueryWizardPage;
+  EnrollResult: Integer;
+
+procedure InitializeWizard;
+begin
+  EnrollPage := CreateInputQueryPage(wpSelectDir,
+    'Enrolement Dolibarr',
+    'Rattachez cette machine a un tiers Dolibarr',
+    'Le code est genere sur la fiche du tiers (bouton Ajouter une machine), valable 5 minutes, a usage unique. Si vous n''etes pas pret, laissez vide: vous pourrez enroller plus tard via l''icone de la barre des taches.');
+  EnrollPage.Add('URL Dolibarr:', False);
+  EnrollPage.Add('Code d''enrolement:', False);
+  EnrollPage.Values[0] := '';
+  EnrollPage.Values[1] := '';
+end;
+
+function EnrollNow: Boolean;
+var
+  Url, Code: string;
+  ResultCode: Integer;
+begin
+  Result := False;
+  Url := Trim(EnrollPage.Values[0]);
+  Code := Trim(EnrollPage.Values[1]);
+  if (Url = '') or (Code = '') then
+    exit;
+  try
+    Exec(ExpandConstant('{app}') + '\\' + '{#MyAppExeName}',
+      '--enroll-url "' + Url + '" --enroll-code "' + Code + '"',
+      ExpandConstant('{app}'), SW_SHOW, ewWaitUntilTerminated, ResultCode);
+    EnrollResult := ResultCode;
+    Result := (ResultCode = 0);
+  except
+    Result := False;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  Msg: string;
+begin
+  if CurStep = ssPostInstall then
+    if EnrollNow then
+      MsgBox('Machine enrolee avec succes. Le service demarrera automatiquement.', mbInformation, MB_OK)
+    else if EnrollResult = 2 then begin
+      Msg := 'L''enrolement a echoue (code ou URL invalide/expire ?). ' +
+        'Le service sera installe mais n''enverra pas de rapports tant que la machine n''est pas enrolee via l''icone de la barre des taches.';
+      MsgBox(Msg, mbError, MB_OK);
+    end;
+end;
 
 [Run]
 Filename: "{app}\{#MyAppServiceExeName}"; Parameters: "install"; Flags: runhidden; Description: "Installer le service Windows"
