@@ -41,8 +41,13 @@ def get_api_key(config):
 
 
 def set_api_key(config, path, api_key):
-    """Store the API key encrypted and remove any plaintext from config."""
-    encrypted = encrypt(api_key)
+    """Store the API key encrypted and remove any plaintext from config.
+
+    Chiffrement a l'echelle machine (CRYPTPROTECT_LOCAL_MACHINE) pour que
+    la cle enrôlee depuis l'icone (session utilisateur) soit dechiffrable
+    par le service Windows (SYSTEM), et inversement.
+    """
+    encrypted = encrypt(api_key, machine=True)
     if encrypted:
         config["api_key_encrypted"] = encrypted
         config.pop("api_key", None)
