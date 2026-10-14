@@ -1,4 +1,4 @@
-# Dolibarr Windows Agent
+# Dolibarr Sysinfo Agent Windows
 
 Service Windows qui collecte les informations systèmes de la machine et les envoie périodiquement à une API (par exemple un module Dolibarr) via HTTP POST (JSON). Chaque machine est identifiée par un `guid` configurable, ce qui permet de rattacher les informations au bon tiers.
 
