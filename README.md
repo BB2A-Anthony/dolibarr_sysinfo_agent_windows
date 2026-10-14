@@ -80,6 +80,26 @@ Lancer `tray.py` (ou l'exécutable `DolibarrAgentTray.exe`) pour afficher une ic
 
 Pour un lancement automatique au démarrage de Windows, placer un raccourci de `DolibarrAgentTray.exe` dans le dossier Démarrage (`shell:startup`).
 
+## Générer un installateur (Inno Setup)
+
+1. Installer [Inno Setup](https://jrsoftware.org/isinfo.php) (le compilateur `ISCC.exe` doit être dans le PATH, ex. `"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"`).
+2. Compiler les exécutables :
+   ```bat
+   build_exe.bat
+   ```
+3. Compiler l'installateur :
+   ```bat
+   ISCC.exe installer.iss
+   ```
+
+L'installateur `Output\DolibarrSysinfoAgentSetup.exe` est généré. Il :
+
+- copie `DolibarrAgent.exe` et `DolibarrAgentTray.exe` dans `C:\Program Files\DolibarrSysinfoAgent\` (par défaut)
+- crée `config.json` à partir de `config.example.json` (non écrasé si déjà présent, non supprimé à la désinstallation)
+- **installe et démarre automatiquement le service Windows** (`DolibarrAgent.exe install` puis `start`)
+- place un raccourci de `DolibarrAgentTray.exe` dans le dossier Démarrage (`shell:startup`) de l'utilisateur
+- à la désinstallation : arrête et supprime le service, puis supprime les fichiers de l'application (pas `config.json`)
+
 ## Installation comme service Windows
 
 1. Installer les dépendances :
