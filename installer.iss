@@ -62,7 +62,7 @@ end;
 
 function EnrollNow: Boolean;
 var
-  Url, Code: string;
+  Url, Code, BaseCmd: string;
   ResultCode: Integer;
 begin
   Result := False;
@@ -70,10 +70,22 @@ begin
   Code := Trim(EnrollPage.Values[1]);
   if (Url = '') or (Code = '') then
     exit;
+  BaseCmd := '--enroll-url "' + Url + '" --enroll-code "' + Code + '"';
   try
     Exec(ExpandConstant('{app}') + '\\' + '{#MyAppExeName}',
-      '--enroll-url "' + Url + '" --enroll-code "' + Code + '"',
+      BaseCmd,
       ExpandConstant('{app}'), SW_SHOW, ewWaitUntilTerminated, ResultCode);
+    if ResultCode = 1 then begin
+      if MsgBox(
+        'Cette machine est deja rattachee a un autre tiers Dolibarr.' + #13#10 +
+        'Confirmer la reaffectation de cette machine ?',
+        mbConfirmation, MB_YESNO) = IDYES then
+      begin
+        Exec(ExpandConstant('{app}') + '\\' + '{#MyAppExeName}',
+          BaseCmd + ' --confirm-reassign',
+          ExpandConstant('{app}'), SW_SHOW, ewWaitUntilTerminated, ResultCode);
+      end;
+    end;
     EnrollResult := ResultCode;
     Result := (ResultCode = 0);
   except
@@ -92,6 +104,11 @@ begin
       Msg := 'L''enrolement a echoue (code ou URL invalide/expire ?). ' +
         'Le service sera installe mais n''enverra pas de rapports tant que la machine n''est pas enrolee via l''icone de la barre des taches.';
       MsgBox(Msg, mbError, MB_OK);
+    end
+    else if EnrollResult = 1 then begin
+      Msg := 'Reaffectation refusee. ' +
+        'La machine reste rattachee a son tiers actuel; vous pouvez relancer l''enrolement via l''icone de la barre des taches.';
+      MsgBox(Msg, mbInformation, MB_OK);
     end;
 end;
 

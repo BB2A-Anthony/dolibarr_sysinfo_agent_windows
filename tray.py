@@ -172,10 +172,11 @@ def open_settings(controller, on_saved=None):
     root.mainloop()
 
 
-def enroll_cli(config_path, api_url, code):
+def enroll_cli(config_path, api_url, code, confirm_reassign=False):
     """Enrolement en ligne de commande (sans interface), utilise par le setup.
 
-    Retourne 0 si succes, 2 si echec d'enrolement, 3 si arguments manquants.
+    Retourne 0 si succes, 1 si reaffectation a confirmer (409),
+    2 si echec d'enrolement, 3 si arguments manquants.
     """
     logging.basicConfig(level=logging.INFO)
     if not api_url or not code:
@@ -183,7 +184,13 @@ def enroll_cli(config_path, api_url, code):
         return 3
     controller = AgentController(config_path)
     controller.config["api_url"] = api_url
-    ok, message, _ = enroll_soc(controller.config, code, controller.config_path)
+    ok, message, need_confirm = enroll_soc(
+        controller.config, code, controller.config_path,
+        confirm_reassign=confirm_reassign,
+    )
+    if need_confirm and not ok:
+        print(message)
+        return 1
     if not ok:
         print(message)
         return 2
@@ -206,7 +213,12 @@ def main():
     logging.basicConfig(level=logging.INFO)
 
     if "--enroll-url" in sys.argv or "--enroll-code" in sys.argv:
-        sys.exit(enroll_cli(CONFIG_PATH, _arg_value("--enroll-url"), _arg_value("--enroll-code")))
+        sys.exit(enroll_cli(
+            CONFIG_PATH,
+            _arg_value("--enroll-url"),
+            _arg_value("--enroll-code"),
+            "--confirm-reassign" in sys.argv,
+        ))
 
     controller = AgentController()
     controller.start()
