@@ -96,9 +96,8 @@ L'installateur `Output\DolibarrSysinfoAgentSetup.exe` est généré. Il :
 
 - copie `DolibarrAgent.exe` et `DolibarrAgentTray.exe` dans `C:\Program Files\DolibarrSysinfoAgent\` (par défaut)
 - crée `config.json` à partir de `config.example.json` (non écrasé si déjà présent, non supprimé à la désinstallation)
-- propose des **cases à cocher** pendant l'installation :
-  - « Installer et démarrer le service Windows » (cochée par défaut) : `DolibarrAgent.exe install` puis `start`
-  - « Démarrer automatiquement l'icône de la barre des tâches à l'ouverture de Windows » (non cochée par défaut) : raccourci dans le dossier Démarrage (`shell:startup`)
+- **installe et démarre automatiquement le service Windows** (`DolibarrAgent.exe install` puis `start`), sans option à décocher
+- place un raccourci de `DolibarrAgentTray.exe` dans le dossier Démarrage (`shell:startup`) de l'utilisateur
 - à la désinstallation : arrête et supprime le service, puis supprime les fichiers de l'application (pas `config.json`)
 
 ## Installation comme service Windows

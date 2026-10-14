@@ -32,22 +32,16 @@ Source: "dist\{#MyAppServiceExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "config.example.json"; DestDir: "{app}"; DestName: "config.json"; Flags: onlyifdoesntexist uninsneveruninstall
 
-[Tasks]
-; Le service n'est installe/demarre que si la case est cochee ( cochee par defaut)
-Name: "installservice"; Description: "Installer et demarrer le service Windows (envoi automatique des rapports)"; GroupDescription: "Options d'installation:"
-Name: "autostarttray"; Description: "Demarrer automatiquement l'icone de la barre des taches a l'ouverture de Windows"; GroupDescription: "Options d'installation:"; Flags: unchecked
-
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-; Autostart tray icon for the current user (tache optionnelle)
-Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: autostarttray
+; Autostart tray icon for the current user (systematique)
+Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
 
 [Run]
-Filename: "{app}\{#MyAppServiceExeName}"; Parameters: "install"; Flags: runhidden; Tasks: installservice; Description: "Installer le service Windows"
-Filename: "{app}\{#MyAppServiceExeName}"; Parameters: "start"; Flags: runhidden; Tasks: installservice; Description: "Demarrer le service Windows"
+Filename: "{app}\{#MyAppServiceExeName}"; Parameters: "install"; Flags: runhidden; Description: "Installer le service Windows"
+Filename: "{app}\{#MyAppServiceExeName}"; Parameters: "start"; Flags: runhidden; Description: "Demarrer le service Windows"
 
 [UninstallRun]
-; Sans effet si le service n'est pas installe
 Filename: "{app}\{#MyAppServiceExeName}"; Parameters: "stop"; Flags: runhidden; RunOnceId "StopSvc"
 Filename: "{app}\{#MyAppServiceExeName}"; Parameters: "remove"; Flags: runhidden; RunOnceId "RemoveSvc"
 
