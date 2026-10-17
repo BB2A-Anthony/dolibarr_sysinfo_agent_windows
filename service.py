@@ -55,11 +55,19 @@ class DolibarrAgentService(win32serviceutil.ServiceFramework):
         interval = self.config.get("poll_interval_seconds", 14400)
         if self.stop_event.wait(initial_delay):
             return
+        from agent.updater import apply_update, check_for_update
+
         while not self.stop_event.is_set():
             try:
                 send_report(self.config)
             except Exception:
                 self.log.error("Envoi échoué:\n%s", traceback.format_exc())
+            try:
+                info = check_for_update(self.config)
+                if info:
+                    apply_update(self.config, info)
+            except Exception:
+                self.log.error("Auto-update échoué:\n%s", traceback.format_exc())
             self.stop_event.wait(interval)
 
 
