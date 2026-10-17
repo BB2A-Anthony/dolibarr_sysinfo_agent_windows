@@ -15,7 +15,7 @@ Service Windows qui collecte les informations systèmes de la machine et les env
 
 ```json
 {
-    "api_url": "https://example.com/api/systeminfo",
+    "api_url": "https://example.com/api/sysinfo",
     "guid": "REPLACE-WITH-UNIQUE-ID",
     "api_key": "",
     "initial_delay_seconds": 30,
@@ -145,15 +145,15 @@ La clé API est chiffrée avec **DPAPI**, qui lie le chiffrement **au compte Win
 2. **Côté agent** : renseigner dans `config.json` (ou via l'icône > Paramètres) :
    - `api_url` : URL de base de votre Dolibarr (ex. `https://dolibarr.mondomaine.com`) — l'agent construit automatiquement les URLs `/api/index.php/...`
    - `api_key` : la clé API Dolibarr
-   - Pas de tiers à renseigner : la machine remonte sans affectation et est rattachée à un tiers **depuis Dolibarr** (`PUT /systeminfo/machine/{guid}/soc` avec `fk_soc`)
-3. **Endpoint de réception** : installer le module fourni dans [`server_module/systeminfo`](server_module/systeminfo/README.md), qui accepte `POST /api/index.php/systeminfo/machine` et rattache les informations au tiers correspondant au `guid`.
+   - Pas de tiers à renseigner : la machine remonte sans affectation et est rattachée à un tiers **depuis Dolibarr** (`PUT /sysinfo/machine/{guid}/soc` avec `fk_soc`)
+3. **Endpoint de réception** : installer le module fourni dans [`server_module/systeminfo`](server_module/systeminfo/README.md), qui accepte `POST /api/index.php/sysinfo/machine` et rattache les informations au tiers correspondant au `guid`.
 4. **Tester** : bouton « Tester la connexion » dans les paramètres de l'icône (appelle `GET /api/index.php/status`).
 
 L'authentification Dolibarr utilise l'en-tête `DOLIBARR_API_KEY` (pas de Bearer).
 
 ## Mise à jour automatique
 
-Le service Windows et l'exécution en boucle (`run.py --loop`) vérifient la version après chaque envoi de rapport en interrogeant le module Dolibarr `systeminfo` (`GET /api/index.php/sysinfo/config`), qui expose la dernière version disponible et l'URL du dossier de mise à jour sur GitHub (`releases/download/<version>/update/`). Si la version distante est plus récente, l'agent télécharge `DolibarrSysinfoAgentSetup.exe` et le lance en mode silencieux (`/VERYSILENT`) : le service est arrêté, les fichiers remplacés (`config.json` préservé) puis le service redémarré par l'installateur.
+Le service Windows et l'exécution en boucle (`run.py --loop`) vérifient la version après chaque envoi de rapport en interrogeant le module Dolibarr `sysinfo` (`GET /api/index.php/sysinfo/config`), qui expose la dernière version disponible et l'URL du dossier de mise à jour sur GitHub (`releases/download/<version>/update/`). Si la version distante est plus récente, l'agent télécharge `DolibarrSysinfoAgentSetup.exe` et le lance en mode silencieux (`/VERYSILENT`) : le service est arrêté, les fichiers remplacés (`config.json` préservé) puis le service redémarré par l'installateur.
 
 Pour désactiver ce comportement : `"auto_update": false` dans `config.json`.
 
