@@ -35,6 +35,7 @@ Service Windows qui collecte les informations systèmes de la machine et les env
 | `poll_interval_seconds` | Intervalle entre deux envois (par défaut 14400 s = 4 h) |
 | `timeout_seconds` | Timeout HTTP (par défaut 30 s) |
 | `verify_ssl` | Vérification du certificat TLS (par défaut true) |
+| `auto_update` | Mise à jour automatique activée (par défaut true, voir ci-dessous) |
 
 ## Payload envoyé
 
@@ -149,6 +150,14 @@ La clé API est chiffrée avec **DPAPI**, qui lie le chiffrement **au compte Win
 4. **Tester** : bouton « Tester la connexion » dans les paramètres de l'icône (appelle `GET /api/index.php/status`).
 
 L'authentification Dolibarr utilise l'en-tête `DOLIBARR_API_KEY` (pas de Bearer).
+
+## Mise à jour automatique
+
+Le service Windows et l'exécution en boucle (`run.py --loop`) vérifient la version après chaque envoi de rapport en interrogeant le module Dolibarr `systeminfo` (`GET /api/index.php/sysinfo/config`), qui expose la dernière version disponible et l'URL du dossier de mise à jour sur GitHub (`releases/download/<version>/update/`). Si la version distante est plus récente, l'agent télécharge `DolibarrSysinfoAgentSetup.exe` et le lance en mode silencieux (`/VERYSILENT`) : le service est arrêté, les fichiers remplacés (`config.json` préservé) puis le service redémarré par l'installateur.
+
+Pour désactiver ce comportement : `"auto_update": false` dans `config.json`.
+
+Côté serveur, la version publiée se règle dans le descripteur du module (`agentWindowsVersion` / `agentWindowsUpdateUrl`) ou via les constantes `SYSINFO_AGENT_WINDOWS_VERSION` / `SYSINFO_AGENT_WINDOWS_UPDATE_URL`.
 
 ## Côté API (exemple de réception)
 
