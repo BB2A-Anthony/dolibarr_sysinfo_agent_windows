@@ -146,7 +146,7 @@ La clé API est chiffrée avec **DPAPI**, qui lie le chiffrement **au compte Win
    - `api_url` : URL de base de votre Dolibarr (ex. `https://dolibarr.mondomaine.com`) — l'agent construit automatiquement les URLs `/api/index.php/...`
    - `api_key` : la clé API Dolibarr
    - Pas de tiers à renseigner : la machine remonte sans affectation et est rattachée à un tiers **depuis Dolibarr** (`PUT /sysinfo/machine/{guid}/soc` avec `fk_soc`)
-3. **Endpoint de réception** : installer le module fourni dans [`server_module/systeminfo`](server_module/systeminfo/README.md), qui accepte `POST /api/index.php/sysinfo/machine` et rattache les informations au tiers correspondant au `guid`.
+3. **Endpoint de réception** : installer le module [dolibarr_module_sysinfo](https://github.com/BB2A-Anthony/dolibarr_module_sysinfo), qui accepte `POST /api/index.php/sysinfo/machine` et rattache les informations au tiers correspondant au `guid`.
 4. **Tester** : bouton « Tester la connexion » dans les paramètres de l'icône (appelle `GET /api/index.php/status`).
 
 L'authentification Dolibarr utilise l'en-tête `DOLIBARR_API_KEY` (pas de Bearer).
